@@ -20,11 +20,11 @@ http://ip:port/drip/swagger-ui.html
 - 41 bits: Timestamp，毫秒级，可支持使用69年，由用户自定义起始时间原点twepoch
 - 10 bits: 机器节点ID，进一步拆分为datacenter ID 5 bits + worker ID 5 bits
 - 9 bits: sequence number，毫秒内序列，9 bits可支持最高512/ms的tps
-- 3 bits: sharding gene bits，用于分库分片的预留因子位，3 bits支持%8分片
+- 3 bits: sharding gene bits，用于分片的预留因子位，默认随机均匀分片，3 bits支持%8分片
 
 加上最高位0（预留标志位，未使用）一共64 bits；使用中可根据业务实际情况调整ID的组成分布。
 
-优点：全局唯一、粗略有序；高性能、易于扩展；可反解、可制造。     
+优点：全局唯一、粗略有序；高性能、易于扩展；可反解、可制造；支持均匀分片、指定分片。     
 缺点：机器ID获取易产生外部依赖（ZK、DB等）；依赖时钟连续性，如出现时钟回拨将无法正常工作。
 
 

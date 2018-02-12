@@ -1,8 +1,6 @@
 package com.github.serenity.drip.base;
 
 import java.security.SecureRandom;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 基于 twitter Snowflake 算法的分布式生成唯一id解决方案
@@ -43,7 +41,6 @@ public class DripWorker {
     private long datacenterId;
     private long sequence = 0L;
     private long lastTimestamp = -1L;
-    private Lock lock = new ReentrantLock();
     private SecureRandom random = new SecureRandom();
 
     public DripWorker(long workerId, long datacenterId) {
@@ -60,8 +57,9 @@ public class DripWorker {
     }
 
     public long nextIdWithGene(long geneId) {
-        if (geneMask <= 0L)
+        if (geneMask <= 0L) {
             throw new IllegalStateException("no gene bits. Refusing to generate id with gene.");
+        }
         return nextId(geneId & geneMask);
     }
 
@@ -98,26 +96,23 @@ public class DripWorker {
         return (~geneMask & id) | (geneMask & geneId);
     }
 
-    protected void assemble(Drip drip) {
-        lock.lock();
-        try {
-            long timestamp = timeGen();
-            if (timestamp < lastTimestamp)
-                throw new RuntimeException(String.format("Clock moved backwards.  Refusing to generate id for %d milliseconds", lastTimestamp - timestamp));
-
-            if (lastTimestamp == timestamp) {
-                sequence = (sequence + 1) & sequenceMask;
-                if (sequence == 0) timestamp = tilNextMillis(lastTimestamp);
-            } else {
-                sequence = 0L;
-            }
-            drip.setTimestamp(timestamp);
-            drip.setSequence(sequence);
-
-            lastTimestamp = timestamp;
-        } finally {
-            lock.unlock();
+    protected synchronized void assemble(Drip drip) {
+        long timestamp = timeGen();
+        if (timestamp < lastTimestamp) {
+            throw new RuntimeException(String.format("Clock moved backwards. " +
+                    "Refusing to generate id for %d milliseconds", lastTimestamp - timestamp));
         }
+
+        if (lastTimestamp == timestamp) {
+            sequence = (sequence + 1) & sequenceMask;
+            if (sequence == 0) timestamp = tilNextMillis(lastTimestamp);
+        } else {
+            sequence = 0L;   // 无gene bits时,此处最好随机初始化,以支持均匀分片
+        }
+        drip.setTimestamp(timestamp);
+        drip.setSequence(sequence);
+
+        lastTimestamp = timestamp;
     }
 
     protected long tilNextMillis(long lastTimestamp) {

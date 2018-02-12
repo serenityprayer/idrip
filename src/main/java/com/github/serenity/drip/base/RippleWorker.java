@@ -12,8 +12,8 @@ public class RippleWorker {
 
     private static final int MAX_WORKING_TIME = 86400;
     private static final int MAX_WORKING_SIZE = 100000;
-    private static final String KEY_WORKER = "id_ripple_worker";
-    private static final String PREFIX = "1";
+    private static final String KEY_WORKER = "ripple_worker";
+    private static final String PREFIX = "9";
 
     private JedisPool jedisPool;
 
@@ -48,18 +48,12 @@ public class RippleWorker {
         try {
             jedis = jedisPool.getResource();
             long value = jedis.incr(key);
-            if(expire >= 0) jedis.expire(key, expire);
+            if (expire >= 0) jedis.expire(key, expire);
             return value;
-        }
-        finally {
-            release(jedis);
-        }
-    }
-
-    private void release(Jedis jedis) {
-        if (jedis != null) {
-            jedis.close();
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
         }
     }
-
 }
